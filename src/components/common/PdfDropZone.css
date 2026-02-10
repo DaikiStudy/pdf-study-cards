@@ -38,6 +38,13 @@
   color: var(--color-text-secondary);
 }
 
+.pdf-drop-formats {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-sm);
+  opacity: 0.7;
+}
+
 .pdf-drop-loaded {
   display: flex;
   align-items: center;

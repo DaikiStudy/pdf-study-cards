@@ -1,4 +1,5 @@
 import { useRef, useCallback, type DragEvent, type ChangeEvent } from 'react';
+import { ACCEPTED_EXTENSIONS, detectFormat } from '../../services/fileParser';
 import './PdfDropZone.css';
 
 interface PdfDropZoneProps {
@@ -7,17 +8,28 @@ interface PdfDropZoneProps {
   onClear?: () => void;
 }
 
+const FORMAT_ICONS: Record<string, string> = {
+  pdf: '📕',
+  pptx: '📊',
+  goodnotes: '📝',
+  unknown: '📄',
+};
+
 export function PdfDropZone({ onFileSelect, currentFile, onClear }: PdfDropZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isAcceptedFile = useCallback((file: File): boolean => {
+    return detectFormat(file) !== 'unknown';
+  }, []);
 
   const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     const file = e.dataTransfer.files[0];
-    if (file && file.type === 'application/pdf') {
+    if (file && isAcceptedFile(file)) {
       onFileSelect(file);
     }
-  }, [onFileSelect]);
+  }, [onFileSelect, isAcceptedFile]);
 
   const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -39,9 +51,12 @@ export function PdfDropZone({ onFileSelect, currentFile, onClear }: PdfDropZoneP
   };
 
   if (currentFile) {
+    const format = detectFormat(currentFile);
+    const icon = FORMAT_ICONS[format] ?? '📄';
+
     return (
       <div className="pdf-drop-loaded">
-        <div className="pdf-drop-file-icon">📄</div>
+        <div className="pdf-drop-file-icon">{icon}</div>
         <div className="pdf-drop-file-info">
           <span className="pdf-drop-file-name">{currentFile.name}</span>
           <span className="pdf-drop-file-size">{formatSize(currentFile.size)}</span>
@@ -60,7 +75,7 @@ export function PdfDropZone({ onFileSelect, currentFile, onClear }: PdfDropZoneP
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf"
+        accept={ACCEPTED_EXTENSIONS}
         onChange={handleChange}
         className="pdf-drop-input"
       />
@@ -72,10 +87,13 @@ export function PdfDropZone({ onFileSelect, currentFile, onClear }: PdfDropZoneP
       >
         <div className="pdf-drop-icon">📥</div>
         <p className="pdf-drop-text">
-          PDFファイルをドラッグ&ドロップ
+          ファイルをドラッグ&ドロップ
         </p>
         <p className="pdf-drop-subtext">
           またはクリックしてファイルを選択
+        </p>
+        <p className="pdf-drop-formats">
+          PDF / PowerPoint / GoodNotes
         </p>
       </div>
     </div>

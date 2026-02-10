@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { Deck, AppSettings, PdfContent, GeminiCardResponse } from '../../types';
 import { PdfDropZone } from '../common/PdfDropZone';
-import { parsePdf } from '../../services/pdfParser';
+import { parseFile, detectFormat, getFormatLabel } from '../../services/fileParser';
 import { generateFlashCards } from '../../services/gemini';
 import { createNewCard } from '../../utils/sm2';
 import { AdBanner } from '../common/AdBanner';
@@ -49,11 +49,12 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
     try {
       setPhase('parsing');
       setError('');
-      const content = await parsePdf(file);
+      const content = await parseFile(file);
       setPdfContent(content);
 
       if (content.pages.every(p => p.fullText.length === 0)) {
-        setError('PDFからテキストを抽出できませんでした。画像ベースのPDFは対応していません。');
+        const fmt = getFormatLabel(detectFormat(file));
+        setError(`${fmt}ファイルからテキストを抽出できませんでした。画像ベースのファイルは対応していません。`);
         setPhase('error');
         return;
       }
@@ -62,7 +63,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
       const cards = await generateFlashCards(content, settings.geminiApiKey);
 
       if (cards.length === 0) {
-        setError('カードを生成できませんでした。別のPDFをお試しください。');
+        setError('カードを生成できませんでした。別のファイルをお試しください。');
         setPhase('error');
         return;
       }
@@ -80,7 +81,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
 
     const deck: Deck = {
       id: crypto.randomUUID(),
-      name: file.name.replace(/\.pdf$/i, ''),
+      name: file.name.replace(/\.(pdf|pptx|ppt|goodnotes)$/i, ''),
       createdAt: new Date().toISOString(),
       totalPages: pdfContent?.totalPages ?? 0,
       cards: generatedCards.map(c =>
@@ -97,7 +98,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
 
   return (
     <div className="upload-page">
-      <h2 className="upload-title">PDFからカード生成</h2>
+      <h2 className="upload-title">ファイルからカード生成</h2>
 
       <PdfDropZone
         onFileSelect={handleFileSelect}
@@ -123,7 +124,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
       {phase === 'parsing' && (
         <div className="upload-loading">
           <div className="upload-spinner" />
-          <p>PDFを解析中...</p>
+          <p>ファイルを解析中...</p>
         </div>
       )}
 
