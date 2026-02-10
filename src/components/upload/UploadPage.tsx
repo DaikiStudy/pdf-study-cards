@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import type { Deck, AppSettings, PdfContent, GeminiCardResponse } from '../../types';
 import { PdfDropZone } from '../common/PdfDropZone';
 import { parseFile, detectFormat, getFormatLabel } from '../../services/fileParser';
-import { generateFlashCards } from '../../services/gemini';
+import { generateFlashCardsChunked, suggestChunkCount } from '../../services/gemini';
 import { createNewCard } from '../../utils/sm2';
 import { AdBanner } from '../common/AdBanner';
 import './UploadPage.css';
@@ -21,12 +21,15 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
   const [error, setError] = useState('');
   const [generatedCards, setGeneratedCards] = useState<GeminiCardResponse[]>([]);
   const [pdfContent, setPdfContent] = useState<PdfContent | null>(null);
+  const [chunkCount, setChunkCount] = useState(1);
+  const [chunkProgress, setChunkProgress] = useState({ completed: 0, total: 0 });
 
   const handleFileSelect = useCallback((f: File) => {
     setFile(f);
     setPhase('select');
     setError('');
     setGeneratedCards([]);
+    setChunkCount(1);
   }, []);
 
   const handleClear = useCallback(() => {
@@ -35,6 +38,8 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
     setError('');
     setGeneratedCards([]);
     setPdfContent(null);
+    setChunkCount(1);
+    setChunkProgress({ completed: 0, total: 0 });
   }, []);
 
   const handleGenerate = useCallback(async () => {
@@ -59,8 +64,21 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
         return;
       }
 
+      // 初回パース時に推奨分割数をセット
+      const suggested = suggestChunkCount(content.totalPages);
+      if (chunkCount === 1 && suggested > 1) {
+        setChunkCount(suggested);
+      }
+
       setPhase('generating');
-      const cards = await generateFlashCards(content, settings.geminiApiKey);
+      setChunkProgress({ completed: 0, total: chunkCount });
+
+      const cards = await generateFlashCardsChunked(
+        content,
+        settings.geminiApiKey,
+        chunkCount,
+        (completed, total) => setChunkProgress({ completed, total }),
+      );
 
       if (cards.length === 0) {
         setError('カードを生成できませんでした。別のファイルをお試しください。');
@@ -74,7 +92,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
       setPhase('error');
     }
-  }, [file, settings.geminiApiKey]);
+  }, [file, settings.geminiApiKey, chunkCount]);
 
   const handleSaveDeck = useCallback(() => {
     if (!file || generatedCards.length === 0) return;
@@ -116,9 +134,34 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
       )}
 
       {file && phase === 'select' && settings.geminiApiKey && (
-        <button className="upload-generate-btn" onClick={handleGenerate}>
-          カードを生成する
-        </button>
+        <div className="upload-generate-section">
+          <div className="upload-chunk-setting">
+            <label className="upload-chunk-label" htmlFor="chunk-count">
+              分割数
+            </label>
+            <div className="upload-chunk-control">
+              <button
+                className="upload-chunk-btn"
+                onClick={() => setChunkCount(c => Math.max(1, c - 1))}
+                disabled={chunkCount <= 1}
+              >-</button>
+              <span className="upload-chunk-value">{chunkCount}</span>
+              <button
+                className="upload-chunk-btn"
+                onClick={() => setChunkCount(c => Math.min(10, c + 1))}
+                disabled={chunkCount >= 10}
+              >+</button>
+            </div>
+            <p className="upload-chunk-hint">
+              {chunkCount === 1
+                ? '全ページを一括で生成'
+                : `${chunkCount}セクションに分けて網羅的に生成`}
+            </p>
+          </div>
+          <button className="upload-generate-btn" onClick={handleGenerate}>
+            カードを生成する
+          </button>
+        </div>
       )}
 
       {phase === 'parsing' && (
@@ -132,7 +175,22 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
         <div className="upload-loading">
           <div className="upload-spinner" />
           <p>AIがカードを生成中...</p>
-          <p className="upload-loading-sub">しばらくお待ちください</p>
+          {chunkProgress.total > 1 && (
+            <>
+              <div className="upload-chunk-progress">
+                <div
+                  className="upload-chunk-progress-bar"
+                  style={{ width: `${(chunkProgress.completed / chunkProgress.total) * 100}%` }}
+                />
+              </div>
+              <p className="upload-loading-sub">
+                セクション {chunkProgress.completed}/{chunkProgress.total} 完了
+              </p>
+            </>
+          )}
+          {chunkProgress.total <= 1 && (
+            <p className="upload-loading-sub">しばらくお待ちください</p>
+          )}
         </div>
       )}
 

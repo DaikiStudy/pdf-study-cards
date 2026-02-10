@@ -1,4 +1,4 @@
-import type { PdfContent, GeminiCardResponse } from '../types';
+import type { PdfContent, PdfPage, GeminiCardResponse } from '../types';
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
@@ -25,6 +25,7 @@ ${pageTexts}
 4. 問題形式は多様にしてください：定義問題、穴埋め問題、○×問題、短答問題、比較問題など
 5. 回答は簡潔かつ正確に
 6. 各問題にはソースページ番号を含めてください
+7. 与えられた全てのページの内容を漏れなく問題にしてください。取りこぼしがないように網羅してください。
 
 以下のJSON配列形式で返してください（他の文章は不要、JSONのみ）:
 [
@@ -37,12 +38,10 @@ ${pageTexts}
 ]`;
 }
 
-export async function generateFlashCards(
-  content: PdfContent,
+async function callGeminiApi(
+  prompt: string,
   apiKey: string
 ): Promise<GeminiCardResponse[]> {
-  const prompt = buildPrompt(content);
-
   const response = await fetch(`${API_BASE}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -87,6 +86,61 @@ export async function generateFlashCards(
   return cards.filter(
     c => c.question && c.answer && c.category && c.sourcePage
   );
+}
+
+/** ページ配列をN個のチャンクに分割 */
+function splitPages(pages: PdfPage[], chunks: number): PdfPage[][] {
+  const nonEmpty = pages.filter(p => p.fullText.length > 0);
+  if (nonEmpty.length === 0) return [[]];
+  const actualChunks = Math.min(chunks, nonEmpty.length);
+  const size = Math.ceil(nonEmpty.length / actualChunks);
+  const result: PdfPage[][] = [];
+  for (let i = 0; i < nonEmpty.length; i += size) {
+    result.push(nonEmpty.slice(i, i + size));
+  }
+  return result;
+}
+
+/** 自動分割数を算出（5ページごとに1チャンク、最小1・最大10） */
+export function suggestChunkCount(totalPages: number): number {
+  if (totalPages <= 5) return 1;
+  return Math.min(10, Math.ceil(totalPages / 5));
+}
+
+export async function generateFlashCards(
+  content: PdfContent,
+  apiKey: string
+): Promise<GeminiCardResponse[]> {
+  const prompt = buildPrompt(content);
+  return callGeminiApi(prompt, apiKey);
+}
+
+/** チャンク分割でカードを生成（進捗コールバック付き） */
+export async function generateFlashCardsChunked(
+  content: PdfContent,
+  apiKey: string,
+  chunkCount: number,
+  onProgress?: (completed: number, total: number) => void,
+): Promise<GeminiCardResponse[]> {
+  const chunks = splitPages(content.pages, chunkCount);
+  const allCards: GeminiCardResponse[] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunkContent: PdfContent = {
+      pages: chunks[i],
+      totalPages: chunks[i].length,
+      redTextItems: content.redTextItems.filter(r =>
+        chunks[i].some(p => p.pageNum === r.page)
+      ),
+    };
+
+    const prompt = buildPrompt(chunkContent);
+    const cards = await callGeminiApi(prompt, apiKey);
+    allCards.push(...cards);
+    onProgress?.(i + 1, chunks.length);
+  }
+
+  return allCards;
 }
 
 export async function testApiKey(apiKey: string): Promise<boolean> {
