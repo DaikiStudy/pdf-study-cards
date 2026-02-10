@@ -1,0 +1,69 @@
+.ad-banner {
+  width: 100%;
+  overflow: hidden;
+}
+
+.ad-banner--horizontal {
+  min-height: 90px;
+}
+
+.ad-banner--vertical {
+  min-height: 250px;
+}
+
+.ad-banner--rectangle {
+  min-height: 250px;
+}
+
+.ad-banner--top {
+  margin-bottom: var(--spacing-md);
+}
+
+.ad-banner--bottom {
+  margin-top: var(--spacing-lg);
+}
+
+/* プレースホルダー（スロットID未設定時） */
+.ad-banner--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.ad-banner--placeholder.ad-banner--horizontal {
+  height: 90px;
+}
+
+.ad-banner--placeholder.ad-banner--vertical {
+  width: 100%;
+  height: 300px;
+}
+
+.ad-banner--placeholder.ad-banner--rectangle {
+  height: 250px;
+  max-width: 336px;
+}
+
+.ad-banner-placeholder-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 2px;
+}
+
+@media (max-width: 768px) {
+  .ad-banner--horizontal {
+    min-height: 50px;
+  }
+
+  .ad-banner--placeholder.ad-banner--horizontal {
+    height: 50px;
+  }
+
+  .ad-banner--placeholder.ad-banner--vertical {
+    height: 200px;
+  }
+}

@@ -1,0 +1,136 @@
+.deck-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.deck-overview-back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  padding: var(--spacing-xs) 0;
+}
+
+.deck-overview-back:hover {
+  text-decoration: underline;
+}
+
+.deck-overview-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.deck-overview-stats {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.deck-stat {
+  flex: 1;
+  min-width: 80px;
+  text-align: center;
+  padding: var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.deck-stat-num {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.deck-stat-label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.deck-stat--due .deck-stat-num { color: var(--color-accent); }
+.deck-stat--mastered .deck-stat-num { color: var(--color-success); }
+.deck-stat--learning .deck-stat-num { color: var(--color-info); }
+.deck-stat--new .deck-stat-num { color: var(--color-text-secondary); }
+
+.deck-overview-study-btn {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.deck-overview-study-btn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.deck-overview-study-btn:disabled {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.deck-overview-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.deck-overview-cards-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.deck-card-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.deck-card-tag {
+  display: inline-block;
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.deck-card-tag--red-text { background: var(--color-red-tag); }
+.deck-card-tag--important { background: var(--color-important-tag); }
+.deck-card-tag--general { background: var(--color-general-tag); }
+
+.deck-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.deck-card-q {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.deck-card-a {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+.deck-card-page {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}

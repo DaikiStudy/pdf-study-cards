@@ -1,0 +1,52 @@
+.rating-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.rating-btn {
+  flex: 1;
+  padding: var(--spacing-md) var(--spacing-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.rating-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.rating-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.rating-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rating-btn--again {
+  background: var(--color-error);
+}
+
+.rating-btn--hard {
+  background: var(--color-warning);
+}
+
+.rating-btn--good {
+  background: var(--color-info);
+}
+
+.rating-btn--easy {
+  background: var(--color-success);
+}
+
+@media (max-width: 768px) {
+  .rating-btn {
+    padding: var(--spacing-sm) var(--spacing-xs);
+    font-size: 0.8rem;
+  }
+}

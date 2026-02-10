@@ -1,0 +1,16 @@
+.app-content {
+  flex: 1;
+  padding-top: var(--header-height);
+}
+
+.app-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  .app-page {
+    padding: var(--spacing-md);
+  }
+}
