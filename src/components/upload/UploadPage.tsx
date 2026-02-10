@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import type { Deck, AppSettings, PdfContent, GeminiCardResponse } from '../../types';
+import type { Deck, AppSettings, PdfContent, GeminiCardResponse, HandoutMode } from '../../types';
 import { PdfDropZone } from '../common/PdfDropZone';
 import { parseFile, detectFormat, getFormatLabel } from '../../services/fileParser';
 import { generateFlashCardsChunked, suggestChunkCount } from '../../services/gemini';
 import { createNewCard } from '../../utils/sm2';
+import { getCategoryLabel } from '../../utils/categoryLabel';
 import { AdBanner } from '../common/AdBanner';
 import './UploadPage.css';
 
@@ -23,13 +24,19 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
   const [pdfContent, setPdfContent] = useState<PdfContent | null>(null);
   const [chunkCount, setChunkCount] = useState(1);
   const [chunkProgress, setChunkProgress] = useState({ completed: 0, total: 0 });
+  const [handoutMode, setHandoutMode] = useState<HandoutMode>('normal');
+  const [saveSource, setSaveSource] = useState(true);
+  const [sourceFileData, setSourceFileData] = useState<ArrayBuffer | null>(null);
 
-  const handleFileSelect = useCallback((f: File) => {
+  const handleFileSelect = useCallback(async (f: File) => {
     setFile(f);
     setPhase('select');
     setError('');
     setGeneratedCards([]);
     setChunkCount(1);
+    setHandoutMode('normal');
+    const buf = await f.arrayBuffer();
+    setSourceFileData(buf);
   }, []);
 
   const handleClear = useCallback(() => {
@@ -40,6 +47,8 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
     setPdfContent(null);
     setChunkCount(1);
     setChunkProgress({ completed: 0, total: 0 });
+    setHandoutMode('normal');
+    setSourceFileData(null);
   }, []);
 
   const handleGenerate = useCallback(async () => {
@@ -77,6 +86,11 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
         content,
         settings.geminiApiKey,
         chunkCount,
+        {
+          useVision: settings.useVisionMode && detectFormat(file) === 'pdf',
+          handoutMode,
+          sourceFileData: sourceFileData ?? undefined,
+        },
         (completed, total) => setChunkProgress({ completed, total }),
       );
 
@@ -92,27 +106,46 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
       setPhase('error');
     }
-  }, [file, settings.geminiApiKey, chunkCount]);
+  }, [file, settings.geminiApiKey, chunkCount, handoutMode, settings.useVisionMode, sourceFileData]);
 
-  const handleSaveDeck = useCallback(() => {
+  const handleSaveDeck = useCallback(async () => {
     if (!file || generatedCards.length === 0) return;
+
+    let sourceFileId: string | undefined;
+    if (saveSource && sourceFileData) {
+      const { storeSourceFile } = await import('../../services/sourceFileStore');
+      sourceFileId = crypto.randomUUID();
+      await storeSourceFile(sourceFileId, file.name, detectFormat(file) as 'pdf' | 'pptx' | 'goodnotes', sourceFileData);
+    }
 
     const deck: Deck = {
       id: crypto.randomUUID(),
       name: file.name.replace(/\.(pdf|pptx|ppt|goodnotes)$/i, ''),
       createdAt: new Date().toISOString(),
       totalPages: pdfContent?.totalPages ?? 0,
+      sourceFileId,
+      sourceFileName: file.name,
+      sourceFileFormat: detectFormat(file) as 'pdf' | 'pptx' | 'goodnotes',
+      handoutMode,
       cards: generatedCards.map(c =>
-        createNewCard(crypto.randomUUID(), c.question, c.answer, c.category, c.sourcePage)
+        createNewCard(crypto.randomUUID(), c.question, c.answer, c.category, c.sourcePage, {
+          explanation: c.explanation,
+          questionType: c.questionType,
+          choices: c.choices,
+          correctChoiceIndex: c.correctChoiceIndex,
+          figureDescription: c.figureDescription,
+        })
       ),
     };
 
     onDeckCreated(deck);
-  }, [file, generatedCards, pdfContent, onDeckCreated]);
+  }, [file, generatedCards, pdfContent, onDeckCreated, saveSource, sourceFileData, handoutMode]);
 
   const redCount = generatedCards.filter(c => c.category === 'red-text').length;
   const importantCount = generatedCards.filter(c => c.category === 'important').length;
   const generalCount = generatedCards.filter(c => c.category === 'general').length;
+  const examCount = generatedCards.filter(c => c.category === 'exam-question').length;
+  const mcCount = generatedCards.filter(c => c.questionType === 'multiple-choice').length;
 
   return (
     <div className="upload-page">
@@ -135,29 +168,62 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
 
       {file && phase === 'select' && settings.geminiApiKey && (
         <div className="upload-generate-section">
-          <div className="upload-chunk-setting">
-            <label className="upload-chunk-label" htmlFor="chunk-count">
-              分割数
-            </label>
-            <div className="upload-chunk-control">
-              <button
-                className="upload-chunk-btn"
-                onClick={() => setChunkCount(c => Math.max(1, c - 1))}
-                disabled={chunkCount <= 1}
-              >-</button>
-              <span className="upload-chunk-value">{chunkCount}</span>
-              <button
-                className="upload-chunk-btn"
-                onClick={() => setChunkCount(c => Math.min(10, c + 1))}
-                disabled={chunkCount >= 10}
-              >+</button>
+          <div className="upload-option-row">
+            <div className="upload-chunk-setting">
+              <label className="upload-chunk-label">分割数</label>
+              <div className="upload-chunk-control">
+                <button
+                  className="upload-chunk-btn"
+                  onClick={() => setChunkCount(c => Math.max(1, c - 1))}
+                  disabled={chunkCount <= 1}
+                >-</button>
+                <span className="upload-chunk-value">{chunkCount}</span>
+                <button
+                  className="upload-chunk-btn"
+                  onClick={() => setChunkCount(c => Math.min(10, c + 1))}
+                  disabled={chunkCount >= 10}
+                >+</button>
+              </div>
+              <p className="upload-chunk-hint">
+                {chunkCount === 1
+                  ? '全ページを一括で生成'
+                  : `${chunkCount}セクションに分けて網羅的に生成`}
+              </p>
             </div>
-            <p className="upload-chunk-hint">
-              {chunkCount === 1
-                ? '全ページを一括で生成'
-                : `${chunkCount}セクションに分けて網羅的に生成`}
-            </p>
+
+            <div className="upload-handout-setting">
+              <label className="upload-chunk-label">ページレイアウト</label>
+              <div className="upload-handout-options">
+                {(['normal', '4-per-page', '6-per-page'] as HandoutMode[]).map(mode => (
+                  <label key={mode} className={`upload-handout-option ${handoutMode === mode ? 'upload-handout-option--active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="handoutMode"
+                      value={mode}
+                      checked={handoutMode === mode}
+                      onChange={() => setHandoutMode(mode)}
+                    />
+                    {mode === 'normal' ? '通常' : mode === '4-per-page' ? '4枚/ページ' : '6枚/ページ'}
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
+
+          <div className="upload-options-footer">
+            <label className="upload-save-source">
+              <input
+                type="checkbox"
+                checked={saveSource}
+                onChange={e => setSaveSource(e.target.checked)}
+              />
+              元ファイルを保存(エクスポート用)
+            </label>
+            {settings.useVisionMode && detectFormat(file) === 'pdf' && (
+              <span className="upload-vision-badge">画像認識ON</span>
+            )}
+          </div>
+
           <button className="upload-generate-btn" onClick={handleGenerate}>
             カードを生成する
           </button>
@@ -232,16 +298,36 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
               <span className="upload-stat-num">{generalCount}</span>
               <span className="upload-stat-label">一般</span>
             </div>
+            {examCount > 0 && (
+              <div className="upload-stat upload-stat--exam">
+                <span className="upload-stat-num">{examCount}</span>
+                <span className="upload-stat-label">試験問題</span>
+              </div>
+            )}
+            {mcCount > 0 && (
+              <div className="upload-stat upload-stat--mc">
+                <span className="upload-stat-num">{mcCount}</span>
+                <span className="upload-stat-label">選択式</span>
+              </div>
+            )}
           </div>
 
           <div className="upload-card-list">
             {generatedCards.slice(0, 5).map((c, i) => (
               <div key={i} className="upload-card-preview">
-                <span className={`upload-card-tag upload-card-tag--${c.category}`}>
-                  {c.category === 'red-text' ? '赤字' : c.category === 'important' ? '重要' : '一般'}
-                </span>
+                <div className="upload-card-tags">
+                  <span className={`upload-card-tag upload-card-tag--${c.category}`}>
+                    {getCategoryLabel(c.category)}
+                  </span>
+                  {c.questionType === 'multiple-choice' && (
+                    <span className="upload-card-tag upload-card-tag--mc">選択式</span>
+                  )}
+                </div>
                 <p className="upload-card-q">Q: {c.question}</p>
                 <p className="upload-card-a">A: {c.answer}</p>
+                {c.explanation && (
+                  <p className="upload-card-explanation">解説: {c.explanation}</p>
+                )}
               </div>
             ))}
             {generatedCards.length > 5 && (

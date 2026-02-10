@@ -53,6 +53,7 @@
 .deck-stat--mastered .deck-stat-num { color: var(--color-success); }
 .deck-stat--learning .deck-stat-num { color: var(--color-info); }
 .deck-stat--new .deck-stat-num { color: var(--color-text-secondary); }
+.deck-stat--exam .deck-stat-num { color: #7B1FA2; }
 
 .deck-overview-study-btn {
   padding: var(--spacing-md) var(--spacing-lg);
@@ -111,6 +112,7 @@
 .deck-card-tag--red-text { background: var(--color-red-tag); }
 .deck-card-tag--important { background: var(--color-important-tag); }
 .deck-card-tag--general { background: var(--color-general-tag); }
+.deck-card-tag--exam-question { background: #7B1FA2; }
 
 .deck-card-content {
   flex: 1;
@@ -128,9 +130,36 @@
   margin-top: var(--spacing-xs);
 }
 
+.deck-card-explanation {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-xs);
+  font-style: italic;
+}
+
 .deck-card-page {
   font-size: 0.75rem;
   color: var(--color-text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.deck-overview-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.deck-overview-export-btn {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.deck-overview-export-btn:hover {
+  background: var(--color-primary-light);
 }

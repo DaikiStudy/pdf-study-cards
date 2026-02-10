@@ -46,15 +46,27 @@ export function createNewCard(
   question: string,
   answer: string,
   category: FlashCard['category'],
-  sourcePage: number
+  sourcePage: number,
+  extra?: {
+    explanation?: string;
+    questionType?: FlashCard['questionType'];
+    choices?: string[];
+    correctChoiceIndex?: number;
+    figureDescription?: string;
+  }
 ): FlashCard {
   const today = new Date().toISOString().split('T')[0];
   return {
     id,
     question,
     answer,
+    explanation: extra?.explanation ?? '',
     category,
+    questionType: extra?.questionType ?? 'free-form',
+    choices: extra?.choices,
+    correctChoiceIndex: extra?.correctChoiceIndex,
     sourcePage,
+    figureDescription: extra?.figureDescription,
     easeFactor: 2.5,
     interval: 0,
     repetitions: 0,

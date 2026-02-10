@@ -165,6 +165,8 @@
 .upload-card-tag--red-text { background: var(--color-red-tag); }
 .upload-card-tag--important { background: var(--color-important-tag); }
 .upload-card-tag--general { background: var(--color-general-tag); }
+.upload-card-tag--exam-question { background: #7B1FA2; }
+.upload-card-tag--mc { background: var(--color-info); }
 
 .upload-card-q {
   font-size: 0.9rem;
@@ -279,4 +281,96 @@
   background: var(--color-primary);
   border-radius: 3px;
   transition: width 0.3s ease;
+}
+
+/* 統計の追加カテゴリ */
+.upload-stat--exam .upload-stat-num { color: #7B1FA2; }
+.upload-stat--mc .upload-stat-num { color: var(--color-info); }
+
+/* オプション行 */
+.upload-option-row {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.upload-option-row > * {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* 配布資料モード */
+.upload-handout-setting {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.upload-handout-options {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.upload-handout-option {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.upload-handout-option input { display: none; }
+
+.upload-handout-option--active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  font-weight: 600;
+}
+
+/* オプションフッター */
+.upload-options-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.upload-save-source {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.upload-vision-badge {
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background: var(--color-info);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* カードプレビュー拡張 */
+.upload-card-tags {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+.upload-card-explanation {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-xs);
+  font-style: italic;
 }

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { ViewId, Deck, AppSettings } from './types';
+import { deleteSourceFile } from './services/sourceFileStore';
 import { DEFAULT_SETTINGS } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { Header } from './components/common/Header';
@@ -32,12 +33,24 @@ function App() {
   }, []);
 
   const handleDeleteDeck = useCallback((deckId: string) => {
+    const deck = decks.find(d => d.id === deckId);
+    if (deck?.sourceFileId) {
+      deleteSourceFile(deck.sourceFileId).catch(() => {});
+    }
     setDecks(prev => prev.filter(d => d.id !== deckId));
     if (activeDeckId === deckId) {
       setActiveDeckId(null);
       setActiveView('home');
     }
-  }, [setDecks, activeDeckId]);
+  }, [decks, setDecks, activeDeckId]);
+
+  const handleImportDecks = useCallback((imported: Deck[]) => {
+    setDecks(prev => {
+      const existingIds = new Set(prev.map(d => d.id));
+      const newDecks = imported.filter(d => !existingIds.has(d.id));
+      return [...newDecks, ...prev];
+    });
+  }, [setDecks]);
 
   const handleDeckCreated = useCallback((deck: Deck) => {
     setDecks(prev => [deck, ...prev]);
@@ -110,6 +123,8 @@ function App() {
           <SettingsPage
             settings={settings}
             onSettingsChange={setSettings}
+            decks={decks}
+            onImportDecks={handleImportDecks}
           />
         );
     }
