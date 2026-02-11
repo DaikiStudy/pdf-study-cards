@@ -71,10 +71,11 @@ export function SettingsPage({ settings, onSettingsChange, decks, onImportDecks 
       <h2 className="settings-title">設定</h2>
 
       <section className="settings-section">
-        <h3 className="settings-section-title">Gemini API キー</h3>
+        <h3 className="settings-section-title">Gemini API キー（任意）</h3>
         <p className="settings-section-desc">
-          Google AI StudioでAPIキーを取得して入力してください。
-          キーはブラウザのローカルストレージにのみ保存されます。
+          APIキーを設定しなくても、共有キーで無料で利用できます。
+          自分のキーを設定すると、レート制限なしでより安定して使用できます。
+          Google AI StudioでAPIキーを取得できます。
         </p>
         <div className="settings-api-row">
           <input

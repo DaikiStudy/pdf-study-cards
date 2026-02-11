@@ -20,6 +20,18 @@
   font-size: 0.9rem;
 }
 
+.upload-info {
+  background: var(--color-primary-light, #e3f2fd);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
 .upload-link-btn {
   background: none;
   border: none;

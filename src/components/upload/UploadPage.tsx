@@ -54,12 +54,6 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
   const handleGenerate = useCallback(async () => {
     if (!file) return;
 
-    if (!settings.geminiApiKey) {
-      setError('Gemini APIキーが設定されていません。設定画面でAPIキーを入力してください。');
-      setPhase('error');
-      return;
-    }
-
     try {
       setPhase('parsing');
       setError('');
@@ -84,7 +78,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
 
       const cards = await generateFlashCardsChunked(
         content,
-        settings.geminiApiKey,
+        settings.geminiApiKey || '',
         chunkCount,
         {
           useVision: settings.useVisionMode && detectFormat(file) === 'pdf',
@@ -157,16 +151,16 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
         onClear={handleClear}
       />
 
-      {!settings.geminiApiKey && (
-        <div className="upload-warning">
-          <p>Gemini APIキーが未設定です。</p>
+      {!settings.geminiApiKey && file && phase === 'select' && (
+        <div className="upload-info">
+          <p>共有APIキーを使用します（無料）。自分のキーを設定するとより安定します。</p>
           <button className="upload-link-btn" onClick={onNavigateSettings}>
-            設定画面でAPIキーを入力
+            APIキーを設定（任意）
           </button>
         </div>
       )}
 
-      {file && phase === 'select' && settings.geminiApiKey && (
+      {file && phase === 'select' && (
         <div className="upload-generate-section">
           <div className="upload-option-row">
             <div className="upload-chunk-setting">
@@ -263,12 +257,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
       {phase === 'error' && (
         <div className="upload-error">
           <p>{error}</p>
-          {!settings.geminiApiKey && (
-            <button className="upload-link-btn" onClick={onNavigateSettings}>
-              設定画面へ
-            </button>
-          )}
-          {settings.geminiApiKey && file && (
+          {file && (
             <button className="upload-retry-btn" onClick={handleGenerate}>
               再試行
             </button>

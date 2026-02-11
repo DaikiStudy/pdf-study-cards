@@ -1,6 +1,7 @@
 import type { PdfContent, PdfPage, GeminiCardResponse, HandoutMode } from '../types';
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const PROXY_URL = '/api/gemini-proxy';
 
 type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
 
@@ -105,7 +106,8 @@ async function callGeminiApi(
   parts: GeminiPart[],
   apiKey: string
 ): Promise<GeminiCardResponse[]> {
-  const response = await fetch(`${API_BASE}?key=${apiKey}`, {
+  const url = apiKey ? `${API_BASE}?key=${apiKey}` : PROXY_URL;
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
