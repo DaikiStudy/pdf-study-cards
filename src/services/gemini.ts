@@ -1,6 +1,6 @@
 import type { PdfContent, PdfPage, GeminiCardResponse, SlidesPerPage } from '../types';
 
-const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
 const PROXY_URL = '/api/gemini-proxy';
 
 type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };

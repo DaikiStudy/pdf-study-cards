@@ -1,7 +1,7 @@
 import type { Config, Context } from "@netlify/functions";
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
 
 // Simple in-memory rate limiter: max 20 requests per IP per minute
 const rateMap = new Map<string, { count: number; resetAt: number }>();
