@@ -30,13 +30,16 @@ export function getFormatLabel(format: SupportedFormat): string {
   return FORMAT_LABELS[format];
 }
 
-export async function parseFile(file: File): Promise<PdfContent> {
+export async function parseFile(
+  file: File,
+  onProgress?: (current: number, total: number) => void,
+): Promise<PdfContent> {
   const format = detectFormat(file);
 
   switch (format) {
     case 'pdf': {
       const { parsePdf } = await import('./pdfParser');
-      return parsePdf(file);
+      return parsePdf(file, onProgress);
     }
     case 'pptx': {
       const { parsePptx } = await import('./pptxParser');

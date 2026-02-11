@@ -4,7 +4,8 @@ export type CardCategory = 'red-text' | 'important' | 'general' | 'exam-question
 
 export type QuestionType = 'free-form' | 'multiple-choice';
 
-export type HandoutMode = 'normal' | '4-per-page' | '6-per-page';
+/** 1ページあたりのスライド枚数（1 = 通常, 2以上 = 配布資料形式） */
+export type SlidesPerPage = number;
 
 export type ExportFormat = 'pdf' | 'pptx' | 'pdf-append' | 'json';
 
@@ -35,7 +36,7 @@ export interface Deck {
   sourceFileId?: string;
   sourceFileName?: string;
   sourceFileFormat?: 'pdf' | 'pptx' | 'goodnotes';
-  handoutMode?: HandoutMode;
+  slidesPerPage?: SlidesPerPage;
 }
 
 export type Rating = 0 | 1 | 3 | 5;

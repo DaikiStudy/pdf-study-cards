@@ -1,4 +1,4 @@
-import type { PdfContent, PdfPage, GeminiCardResponse, HandoutMode } from '../types';
+import type { PdfContent, PdfPage, GeminiCardResponse, SlidesPerPage } from '../types';
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const PROXY_URL = '/api/gemini-proxy';
@@ -35,7 +35,14 @@ const COMMON_INSTRUCTIONS = `## 指示
 8. 全ページの内容を漏れなく網羅してください。取りこぼしがないようにしてください。
 9. 回答は簡潔かつ正確に。`;
 
-function buildTextPrompt(content: PdfContent): string {
+function buildLayoutHint(slidesPerPage: SlidesPerPage): string {
+  if (slidesPerPage <= 1) return '';
+  return `\n## ページレイアウト（参考情報）
+このドキュメントは1ページに${slidesPerPage}枚のスライドが配置されている可能性があります。
+各スライドの内容を個別に認識し、それぞれから問題を作成してください。\n`;
+}
+
+function buildTextPrompt(content: PdfContent, slidesPerPage: SlidesPerPage): string {
   const redTexts = content.redTextItems.map(r => `- [p.${r.page}] ${r.text}`).join('\n');
 
   const pageTexts = content.pages
@@ -44,7 +51,7 @@ function buildTextPrompt(content: PdfContent): string {
     .join('\n\n');
 
   return `あなたは学習支援AIです。以下はスライドから抽出したテキストです。このコンテンツからQ&A形式のフラッシュカードを作成してください。
-
+${buildLayoutHint(slidesPerPage)}
 ## 赤字テキスト（特に重要）
 ${redTexts || '（赤字テキストは検出されませんでした）'}
 
@@ -58,15 +65,12 @@ ${JSON_SCHEMA_INSTRUCTIONS}`;
 
 function buildMultimodalParts(
   content: PdfContent,
-  handoutMode: HandoutMode,
+  slidesPerPage: SlidesPerPage,
   pageImages: Map<number, string>
 ): GeminiPart[] {
-  const handoutNote =
-    handoutMode === '4-per-page'
-      ? 'このPDFは1ページに4枚のスライドが配置された配布資料形式です。各スライドを個別に認識してください。'
-      : handoutMode === '6-per-page'
-        ? 'このPDFは1ページに6枚のスライドが配置された配布資料形式です。各スライドを個別に認識してください。'
-        : '通常の1スライド1ページ形式です。';
+  const layoutNote = slidesPerPage > 1
+    ? `このPDFは1ページに${slidesPerPage}枚のスライドが配置されている可能性があります。各スライドの内容を個別に認識し、それぞれから問題を作成してください。`
+    : '通常の1スライド1ページ形式です。';
 
   const parts: GeminiPart[] = [];
 
@@ -74,8 +78,8 @@ function buildMultimodalParts(
     text: `あなたは学習支援AIです。以下はスライドのページ画像とテキストです。
 このコンテンツからQ&A形式のフラッシュカードを作成してください。
 
-## ページレイアウト
-${handoutNote}
+## ページレイアウト（参考情報）
+${layoutNote}
 
 ${COMMON_INSTRUCTIONS}
 
@@ -190,7 +194,7 @@ export function suggestChunkCount(totalPages: number): number {
 
 export interface ChunkedGenerateOptions {
   useVision: boolean;
-  handoutMode: HandoutMode;
+  slidesPerPage: SlidesPerPage;
   sourceFileData?: ArrayBuffer;
 }
 
@@ -220,9 +224,9 @@ export async function generateFlashCardsChunked(
       const { renderPagesToBase64 } = await import('./pageRenderer');
       const pageNums = chunks[i].map(p => p.pageNum);
       const images = await renderPagesToBase64(options.sourceFileData, pageNums, 1.5);
-      parts = buildMultimodalParts(chunkContent, options.handoutMode, images);
+      parts = buildMultimodalParts(chunkContent, options.slidesPerPage, images);
     } else {
-      parts = [{ text: buildTextPrompt(chunkContent) }];
+      parts = [{ text: buildTextPrompt(chunkContent, options.slidesPerPage) }];
     }
 
     const cards = await callGeminiApi(parts, apiKey);

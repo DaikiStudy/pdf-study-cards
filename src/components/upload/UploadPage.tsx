@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Deck, AppSettings, PdfContent, GeminiCardResponse, HandoutMode } from '../../types';
+import type { Deck, AppSettings, PdfContent, GeminiCardResponse } from '../../types';
 import { PdfDropZone } from '../common/PdfDropZone';
 import { parseFile, detectFormat, getFormatLabel } from '../../services/fileParser';
 import { generateFlashCardsChunked, suggestChunkCount } from '../../services/gemini';
@@ -16,6 +16,8 @@ interface UploadPageProps {
 
 type Phase = 'select' | 'parsing' | 'generating' | 'preview' | 'error';
 
+const SLIDES_PRESETS = [1, 2, 4, 6, 8, 9, 16];
+
 export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: UploadPageProps) {
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<Phase>('select');
@@ -24,9 +26,11 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
   const [pdfContent, setPdfContent] = useState<PdfContent | null>(null);
   const [chunkCount, setChunkCount] = useState(1);
   const [chunkProgress, setChunkProgress] = useState({ completed: 0, total: 0 });
-  const [handoutMode, setHandoutMode] = useState<HandoutMode>('normal');
+  const [slidesPerPage, setSlidesPerPage] = useState(1);
+  const [customSlides, setCustomSlides] = useState('');
   const [saveSource, setSaveSource] = useState(true);
   const [sourceFileData, setSourceFileData] = useState<ArrayBuffer | null>(null);
+  const [parseProgress, setParseProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handleFileSelect = useCallback(async (f: File) => {
     setFile(f);
@@ -34,7 +38,8 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
     setError('');
     setGeneratedCards([]);
     setChunkCount(1);
-    setHandoutMode('normal');
+    setSlidesPerPage(1);
+    setCustomSlides('');
     const buf = await f.arrayBuffer();
     setSourceFileData(buf);
   }, []);
@@ -47,8 +52,10 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
     setPdfContent(null);
     setChunkCount(1);
     setChunkProgress({ completed: 0, total: 0 });
-    setHandoutMode('normal');
+    setSlidesPerPage(1);
+    setCustomSlides('');
     setSourceFileData(null);
+    setParseProgress(null);
   }, []);
 
   const handleGenerate = useCallback(async () => {
@@ -57,7 +64,10 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
     try {
       setPhase('parsing');
       setError('');
-      const content = await parseFile(file);
+      setParseProgress(null);
+      const content = await parseFile(file, (current, total) => {
+        setParseProgress({ current, total });
+      });
       setPdfContent(content);
 
       if (content.pages.every(p => p.fullText.length === 0)) {
@@ -82,7 +92,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
         chunkCount,
         {
           useVision: settings.useVisionMode && detectFormat(file) === 'pdf',
-          handoutMode,
+          slidesPerPage,
           sourceFileData: sourceFileData ?? undefined,
         },
         (completed, total) => setChunkProgress({ completed, total }),
@@ -100,7 +110,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
       setPhase('error');
     }
-  }, [file, settings.geminiApiKey, chunkCount, handoutMode, settings.useVisionMode, sourceFileData]);
+  }, [file, settings.geminiApiKey, chunkCount, slidesPerPage, settings.useVisionMode, sourceFileData]);
 
   const handleSaveDeck = useCallback(async () => {
     if (!file || generatedCards.length === 0) return;
@@ -120,7 +130,7 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
       sourceFileId,
       sourceFileName: file.name,
       sourceFileFormat: detectFormat(file) as 'pdf' | 'pptx' | 'goodnotes',
-      handoutMode,
+      slidesPerPage: slidesPerPage > 1 ? slidesPerPage : undefined,
       cards: generatedCards.map(c =>
         createNewCard(crypto.randomUUID(), c.question, c.answer, c.category, c.sourcePage, {
           explanation: c.explanation,
@@ -133,7 +143,20 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
     };
 
     onDeckCreated(deck);
-  }, [file, generatedCards, pdfContent, onDeckCreated, saveSource, sourceFileData, handoutMode]);
+  }, [file, generatedCards, pdfContent, onDeckCreated, saveSource, sourceFileData, slidesPerPage]);
+
+  const handleSlidesPreset = (n: number) => {
+    setSlidesPerPage(n);
+    setCustomSlides('');
+  };
+
+  const handleCustomSlidesChange = (value: string) => {
+    setCustomSlides(value);
+    const n = parseInt(value, 10);
+    if (n >= 1 && n <= 50) {
+      setSlidesPerPage(n);
+    }
+  };
 
   const redCount = generatedCards.filter(c => c.category === 'red-text').length;
   const importantCount = generatedCards.filter(c => c.category === 'important').length;
@@ -186,21 +209,30 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
             </div>
 
             <div className="upload-handout-setting">
-              <label className="upload-chunk-label">ページレイアウト</label>
-              <div className="upload-handout-options">
-                {(['normal', '4-per-page', '6-per-page'] as HandoutMode[]).map(mode => (
-                  <label key={mode} className={`upload-handout-option ${handoutMode === mode ? 'upload-handout-option--active' : ''}`}>
-                    <input
-                      type="radio"
-                      name="handoutMode"
-                      value={mode}
-                      checked={handoutMode === mode}
-                      onChange={() => setHandoutMode(mode)}
-                    />
-                    {mode === 'normal' ? '通常' : mode === '4-per-page' ? '4枚/ページ' : '6枚/ページ'}
-                  </label>
+              <label className="upload-chunk-label">スライド数/ページ（参考）</label>
+              <div className="upload-slides-presets">
+                {SLIDES_PRESETS.map(n => (
+                  <button
+                    key={n}
+                    className={`upload-slides-btn ${slidesPerPage === n && !customSlides ? 'upload-slides-btn--active' : ''}`}
+                    onClick={() => handleSlidesPreset(n)}
+                  >
+                    {n}
+                  </button>
                 ))}
+                <input
+                  type="number"
+                  className={`upload-slides-input ${customSlides ? 'upload-slides-input--active' : ''}`}
+                  placeholder="他"
+                  min={1}
+                  max={50}
+                  value={customSlides}
+                  onChange={e => handleCustomSlidesChange(e.target.value)}
+                />
               </div>
+              <p className="upload-chunk-hint">
+                設定なしでも読み取れます。精度向上のヒントです
+              </p>
             </div>
           </div>
 
@@ -228,6 +260,22 @@ export function UploadPage({ settings, onDeckCreated, onNavigateSettings }: Uplo
         <div className="upload-loading">
           <div className="upload-spinner" />
           <p>ファイルを解析中...</p>
+          {parseProgress && parseProgress.total > 1 && (
+            <>
+              <div className="upload-chunk-progress">
+                <div
+                  className="upload-chunk-progress-bar"
+                  style={{ width: `${(parseProgress.current / parseProgress.total) * 100}%` }}
+                />
+              </div>
+              <p className="upload-loading-sub">
+                ページ {parseProgress.current}/{parseProgress.total}
+              </p>
+            </>
+          )}
+          {(!parseProgress || parseProgress.total <= 1) && (
+            <p className="upload-loading-sub">しばらくお待ちください</p>
+          )}
         </div>
       )}
 
